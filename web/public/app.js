@@ -5,6 +5,34 @@ const getInput = () => ({
   jobUrl: $('job-url').value.trim(), resumeText: $('resume-text').value.trim(),
   jobDescription: $('jd').value.trim(), applicationStatus: $('status').value
 });
+const historyKey = 'nidhi-outreach-feedback-v1';
+const readHistory = () => { try { return JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch { return []; } };
+const writeHistory = items => { localStorage.setItem(historyKey, JSON.stringify(items.slice(0, 30))); renderHistory(); };
+
+function renderHistory() {
+  const items = readHistory();
+  $('feedback-panel').hidden = !items.length;
+  $('feedback-list').replaceChildren(...items.map(item => {
+    const li = document.createElement('li');
+    const label = document.createElement('strong');
+    label.textContent = `${item.role || 'Job outreach'} · ${new Date(item.createdAt).toLocaleDateString()} · ${item.outcome.replaceAll('_', ' ')}`;
+    li.append(label);
+    const actions = item.outcome === 'draft' ? [['sent', 'I sent it']] : [['replied', 'Got a reply'], ['useful_next_step', 'Useful next step'], ['no_reply', 'No reply after 14 days']];
+    for (const [value, title] of actions) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = title; button.className = 'feedback-action';
+      button.addEventListener('click', () => updateOutcome(item.id, value)); li.append(button);
+    }
+    return li;
+  }));
+}
+
+async function updateOutcome(id, outcome) {
+  try {
+    await callApi('/api/feedback', { draftId: id, outcome });
+    writeHistory(readHistory().map(item => item.id === id ? { ...item, outcome } : item));
+    setStatus('Outcome saved. Future daily writing guidance can use this feedback.');
+  } catch (error) { setStatus(error.message); }
+}
 
 $('resume-file').addEventListener('change', async event => {
   const file = event.target.files?.[0];
@@ -61,6 +89,7 @@ $('agent-form').addEventListener('submit', async event => {
     $('draft-body').textContent = result.draft.body;
     $('attachment-reminder').textContent = `Before sending: attach ${resumeFilename} manually and verify the contact and claims.`;
     $('copy-button').dataset.email = primary?.email || '';
+    if (result.draftId) writeHistory([{ id: result.draftId, role: [result.role, result.company].filter(Boolean).join(' · '), createdAt: new Date().toISOString(), outcome: 'draft' }, ...readHistory()]);
     setStatus('Email ready to copy. No email has been sent.');
   } catch (error) { setStatus(error.message); }
   finally { button.disabled = false; button.innerHTML = 'Find contacts and write email <span aria-hidden="true">→</span>'; }
@@ -71,3 +100,5 @@ $('copy-button').addEventListener('click', async () => {
   await navigator.clipboard.writeText(`${address ? `To: ${address}\n` : ''}Subject: ${$('draft-subject').textContent}\n\n${$('draft-body').textContent}`);
   setStatus('Email copied. Remember to attach the resume manually.');
 });
+
+renderHistory();
