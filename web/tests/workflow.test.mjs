@@ -48,3 +48,29 @@ test('draft endpoint adds greeting and signature without inventing a recipient',
   assert.match(draft.body, /^Hello,/);
   assert.match(draft.body, /Best,\nNidhi Deshpande$/);
 });
+
+test('one-click compose returns only verified contact addresses and a draft', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async url => ({ ok: true, json: async () => url.endsWith('/scrape') ?
+    { data: { markdown: 'Talent Acquisition Manager role at Acme. Jane Doe jane@acme.example', metadata: { title: 'Talent Acquisition Manager at Acme' } } } :
+    { data: { web: [{ url: 'https://acme.example/team', title: 'Team', description: 'Jane Doe jane@acme.example' }] } } });
+  try {
+    let calls = 0;
+    const env = { APP_ACCESS_TOKEN: 'test-code', FIRECRAWL_API_KEY: 'test', AI: { run: async () => {
+      calls++;
+      return { response: calls === 1 ? JSON.stringify({ company: 'Acme', jobTitle: 'Talent Acquisition Manager', contacts: [
+        { name: 'Jane Doe', role: 'Recruiter', email: 'jane@acme.example', sourceUrl: 'https://acme.example/team', confidence: 'medium' },
+        { name: 'Unknown Person', role: 'Recruiter', email: 'guessed@acme.example', sourceUrl: 'https://acme.example/team', confidence: 'high' }
+      ] }) : JSON.stringify({ subject: 'Talent Acquisition Manager', body: 'I saw the role and would welcome a conversation.', usedResumeQuotes: [], usedSourceUrls: [] }) };
+    } } };
+    const input = { jobUrl: 'https://acme.example/jobs/123', resumeText: 'Recruiting experience '.repeat(20), applicationStatus: 'unknown' };
+    const response = await worker.fetch(new Request('https://app.example/api/compose', { method: 'POST', headers: { 'x-access-token': 'test-code' }, body: JSON.stringify(input) }), env);
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.contacts.length, 1);
+    assert.equal(result.contacts[0].email, 'jane@acme.example');
+    assert.equal(result.warning.includes('Fewer than two'), true);
+    assert.equal(result.sources, undefined);
+    assert.match(result.draft.body, /^Hi Jane,/);
+  } finally { globalThis.fetch = original; }
+});
