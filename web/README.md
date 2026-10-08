@@ -1,6 +1,6 @@
 # Nidhi job outreach web app
 
-This Cloudflare Worker serves a small browser app. Its one-click flow reads a job link, identifies the employer, searches its careers pages and hiring contacts with Firecrawl, identifies up to two likely contacts with work emails literally present in the research, and uses Cloudflare Workers AI to draft an email. The page shows only the contacts and copy-ready email; sources remain internal for validation. Nidhi copies the result into her mail client and attaches her latest resume. The app never accesses Gmail or sends mail.
+This Cloudflare Worker serves a small browser app. Its one-click flow reads a job link, identifies the employer, searches its careers pages, and uses Cloudflare Workers AI to draft an email. With Apollo lookup enabled, it searches Apollo through Firecrawl Alexandria for likely hiring contacts, then resolves at most two work emails. Publicly visible work emails remain a fallback. The page shows only the contacts and copy-ready email; sources remain internal for validation. Nidhi copies the result into her mail client and attaches her latest resume. The app never accesses Gmail or sends mail.
 
 ## Daily learning and outcome feedback
 
@@ -21,7 +21,7 @@ The access code prevents casual visitors from spending the free allowance. Keep 
 
 Research results are evidence candidates, not a guarantee that the job is open or that a person owns the vacancy. The app accepts a work email only if it is visible in a research result. It does not guess email patterns or promise 100% or 90% certainty. If fewer than two addresses can be substantiated, the remaining slot says so. If the listing is inaccessible, paste the job description. Review the contact and every claim before sending.
 
-Apollo, Lusha, and ZoomInfo connections inside Codex cannot be used automatically by this independent Cloudflare Worker. Direct provider searches require separate provider API credentials and account entitlements; none are configured in this deployment. The one-click flow currently uses Firecrawl public research. Do not describe an address as provider-verified unless a provider integration actually returned it.
+Apollo is available through Firecrawl Alexandria with the existing `FIRECRAWL_API_KEY`; no separate Apollo key is needed. An account admin must review and accept Firecrawl's supplemental terms and Apollo's provider agreement in the Firecrawl dashboard. Set `ALEXANDRIA_APOLLO_ENABLED = "true"` in Worker configuration only after that step and after confirming the key belongs to that Firecrawl workspace. Apollo person search costs zero credits; person match costs 30 credits for each matched person. The code runs at most two match calls per job, capping that stage at 60 credits. It does not top up credits or buy a plan. Lusha and ZoomInfo Codex connections are not automatically accessible to this Worker. A provider returned address is still not a guarantee that its owner manages the vacancy or that delivery will succeed.
 
 ## Local checks
 
