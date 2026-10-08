@@ -22,6 +22,8 @@ function renderHistory() {
       const button = document.createElement('button'); button.type = 'button'; button.textContent = title; button.className = 'feedback-action';
       button.addEventListener('click', () => updateOutcome(item.id, value)); li.append(button);
     }
+    const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Hide from this device'; remove.className = 'feedback-action';
+    remove.addEventListener('click', () => writeHistory(readHistory().filter(saved => saved.id !== item.id))); li.append(remove);
     return li;
   }));
 }
