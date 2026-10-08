@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateDraft, validJobUrl, researchJob } from '../src/workflow.mjs';
 import worker from '../src/worker.mjs';
+import { dailyLearn, recordFeedback, saveDraft } from '../src/learning.mjs';
 
 test('rejects private URL targets', () => {
   assert.equal(validJobUrl('https://127.0.0.1/internal'), false);
@@ -27,7 +28,8 @@ test('research captures sources from Firecrawl v2 responses', async () => {
     { data: { markdown: 'Talent Acquisition job description', metadata: { title: 'TA role' } } } :
     { data: { web: [{ url: 'https://company.example/careers/123', title: 'Careers', description: 'TA opening' }] } } });
   try {
-    const result = await researchJob({ jobUrl: 'https://www.linkedin.com/jobs/view/123', resumeText: 'Recruiting experience '.repeat(20) }, { FIRECRAWL_API_KEY: 'test', AI: { run: async () => ({ response: JSON.stringify({ company: 'Company', jobTitle: 'TA role', jobStatus: 'unknown', fit: [], contacts: [{ name: '', role: 'Recruiter', sourceUrl: 'https://company.example/careers/123' }] }) }) } });
+    let aiCalls = 0;
+    const result = await researchJob({ jobUrl: 'https://www.linkedin.com/jobs/view/123', resumeText: 'Recruiting experience '.repeat(20) }, { FIRECRAWL_API_KEY: 'test', AI: { run: async () => ({ response: JSON.stringify(++aiCalls === 1 ? { company: 'Company', jobTitle: 'TA role' } : { company: 'Company', jobTitle: 'TA role', jobStatus: 'unknown', fit: [], contacts: [{ name: '', role: 'Recruiter', sourceUrl: 'https://company.example/careers/123' }] }) }) } });
     assert.equal(result.sources.length, 2);
     assert.equal(result.sources[0].title, 'TA role');
     assert.equal(result.analysis.company, 'Company');
@@ -58,7 +60,7 @@ test('one-click compose returns only verified contact addresses and a draft', as
     let calls = 0;
     const env = { APP_ACCESS_TOKEN: 'test-code', FIRECRAWL_API_KEY: 'test', AI: { run: async () => {
       calls++;
-      return { response: calls === 1 ? JSON.stringify({ company: 'Acme', jobTitle: 'Talent Acquisition Manager', contacts: [
+      return { response: calls === 1 ? JSON.stringify({ company: 'Acme', jobTitle: 'Talent Acquisition Manager' }) : calls === 2 ? JSON.stringify({ company: 'Acme', jobTitle: 'Talent Acquisition Manager', contacts: [
         { name: 'Jane Doe', role: 'Recruiter', email: 'jane@acme.example', sourceUrl: 'https://acme.example/team', confidence: 'medium' },
         { name: 'Unknown Person', role: 'Recruiter', email: 'guessed@acme.example', sourceUrl: 'https://acme.example/team', confidence: 'high' }
       ] }) : JSON.stringify({ subject: 'Talent Acquisition Manager', body: 'I saw the role and would welcome a conversation.', usedResumeQuotes: [], usedSourceUrls: [] }) };
@@ -72,5 +74,36 @@ test('one-click compose returns only verified contact addresses and a draft', as
     assert.equal(result.warning.includes('Fewer than two'), true);
     assert.equal(result.sources, undefined);
     assert.match(result.draft.body, /^Hi Jane,/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('feedback records manual sending and prevents premature no-reply labels', async () => {
+  const data = new Map();
+  const env = { LEARNING: {
+    put: async (key, value) => data.set(key, JSON.parse(value)),
+    get: async key => data.get(key) || null
+  } };
+  const id = await saveDraft(env, { subject: 'This needs your attention', body: 'Since I have your attention, I saw the job.' });
+  await assert.rejects(recordFeedback(env, { draftId: id, outcome: 'replied' }), /Mark the email sent/);
+  assert.equal((await recordFeedback(env, { draftId: id, outcome: 'sent' })).outcome, 'sent');
+  await assert.rejects(recordFeedback(env, { draftId: id, outcome: 'no_reply' }), /Wait 14 days/);
+  assert.equal((await recordFeedback(env, { draftId: id, outcome: 'replied' })).outcome, 'replied');
+  assert.equal(data.get(`draft:${id}`).subjectStyle, 'attention');
+  assert.equal(JSON.stringify(data.get(`draft:${id}`)).includes('I saw the job'), false);
+});
+
+test('daily learning stores bounded sourced rules for future prompts', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ data: { web: [{ url: 'https://example.org/cold-email-study', title: 'Study', description: 'Specific messages may work better.' }] } }) });
+  const data = new Map();
+  const env = { FIRECRAWL_API_KEY: 'test', LEARNING: {
+    list: async () => ({ keys: [], list_complete: true }),
+    put: async (key, value) => data.set(key, JSON.parse(value))
+  }, AI: { run: async () => ({ response: JSON.stringify({ rules: ['Name the exact role and one evidence-backed achievement.'], sourceUrls: ['https://example.org/cold-email-study'], outcomeNote: 'No sent outcomes yet.' }) }) } };
+  try {
+    const guide = await dailyLearn(env);
+    assert.equal(guide.rules.length, 1);
+    assert.deepEqual(guide.sourceUrls, ['https://example.org/cold-email-study']);
+    assert.equal(data.get('learning:latest').counts.attention.sent, 0);
   } finally { globalThis.fetch = original; }
 });
