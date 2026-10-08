@@ -5,26 +5,42 @@ import worker from '../src/worker.mjs';
 import { dailyLearn, recordFeedback, saveDraft } from '../src/learning.mjs';
 import { lookupApolloContacts } from '../src/apollo.mjs';
 
-test('Apollo lookup limits paid matches and rejects mismatched employer or locked email', async () => {
+test('provider lookup uses two FullEnrich emails within the 60 credit ceiling', async () => {
   const original = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (_url, init) => {
     const request = JSON.parse(init.body).alexandria;
     calls.push(request);
     const data = request.capability === 'people/search' ? { people: [
-      { id: '1', title: 'Head of Talent Acquisition', has_email: true },
-      { id: '2', title: 'Recruiter', has_email: true },
-      { id: '3', title: 'Recruiter', has_email: true }
-    ] } : request.options.id === '1' ? { person: { name: 'Jane Doe', title: 'Head of Talent Acquisition', email: 'jane@acme.example', organization: { primary_domain: 'acme.example' } } } :
-      { person: { name: 'Other Person', title: 'Recruiter', email: 'email_not_unlocked@acme.example', organization: { primary_domain: 'acme.example' } } };
+      { full_name: 'Jane Doe', first_name: 'Jane', last_name: 'Doe', headline: 'Head of Talent Acquisition' },
+      { full_name: 'John Smith', first_name: 'John', last_name: 'Smith', headline: 'Recruiter' }
+    ] } : { results: [{ contact_info: { most_probable_work_email: { email: request.options.first_name === 'Jane' ? 'jane@acme.example' : 'john@acme.example' } } }] };
     return { ok: true, json: async () => ({ success: true, data: { alexandria: [{ data }] } }) };
   };
   try {
-    const result = await lookupApolloContacts({ analysis: { company: 'Acme', jobTitle: 'Talent Acquisition Specialist', companyWebsiteUrl: 'https://acme.example/careers' } }, { ALEXANDRIA_APOLLO_ENABLED: 'true', FIRECRAWL_API_KEY: 'test' });
+    const result = await lookupApolloContacts({ analysis: { company: 'Acme', jobTitle: 'Talent Acquisition Specialist', companyWebsiteUrl: 'https://acme.example/careers' } }, { PROVIDER_LOOKUP_ENABLED: 'true', FIRECRAWL_API_KEY: 'test' });
     assert.equal(calls.length, 3);
-    assert.equal(calls[0].options.q_organization_domains_list[0], 'acme.example');
-    assert.equal(result.contacts.length, 1);
+    assert.equal(calls[0].options.current_company_domains[0].value, 'acme.example');
+    assert.equal(result.contacts.length, 2);
     assert.equal(result.contacts[0].email, 'jane@acme.example');
+  } finally { globalThis.fetch = original; }
+});
+
+test('Apollo fallback rejects a mismatched employer and limits paid matches', async () => {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (_url, init) => {
+    const request = JSON.parse(init.body).alexandria;
+    calls.push(request);
+    const data = request.provider === 'fullenrich' ? { people: [] } : request.capability === 'people/search' ?
+      { people: [{ id: '1', title: 'Recruiter', has_email: true }, { id: '2', title: 'Recruiter', has_email: true }] } :
+      { person: { name: 'Jane Doe', title: 'Recruiter', email: 'jane@other.example', organization: { primary_domain: 'other.example' } } };
+    return { ok: true, json: async () => ({ success: true, data: { alexandria: [{ data }] } }) };
+  };
+  try {
+    const result = await lookupApolloContacts({ analysis: { company: 'Acme', jobTitle: 'Recruiter', companyWebsiteUrl: 'https://acme.example/careers' } }, { PROVIDER_LOOKUP_ENABLED: 'true', FIRECRAWL_API_KEY: 'test' });
+    assert.equal(calls.length, 3);
+    assert.equal(result.contacts.length, 0);
   } finally { globalThis.fetch = original; }
 });
 
