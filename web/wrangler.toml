@@ -9,3 +9,8 @@ binding = "AI"
 directory = "./public"
 binding = "ASSETS"
 
+[[kv_namespaces]]
+binding = "LEARNING"
+
+[triggers]
+crons = ["30 3 * * *"]
