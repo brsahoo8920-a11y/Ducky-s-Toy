@@ -92,8 +92,12 @@ export async function researchJob(input, env) {
       .map(x => {
         const email = String(x.email || '').trim().toLowerCase();
         const excerpt = unique.find(s => s.url === x.sourceUrl)?.excerpt || '';
-        const verified = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email) &&
-          new RegExp(`(^|[^a-z0-9.!#$%&'*+/=?^_` + '`' + `{|}~-])${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9.-])`, 'i').test(excerpt);
+        const at = excerpt.toLowerCase().indexOf(email);
+        const before = at > 0 ? excerpt[at - 1] : '';
+        const after = at >= 0 ? excerpt[at + email.length] || '' : '';
+        const verified = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email) &&
+          !/@(?:gmail|yahoo|hotmail|outlook)\./.test(email) && at >= 0 &&
+          !/[a-z0-9._%+-]/i.test(before) && !/[a-z0-9.-]/i.test(after);
         return { name: x.name.trim(), role: String(x.role || '').trim(), reason: String(x.reason || '').trim(), sourceUrl: x.sourceUrl,
           confidence: ['high', 'medium', 'low'].includes(x.confidence) ? x.confidence : 'low', email: verified ? email : '' };
       })
