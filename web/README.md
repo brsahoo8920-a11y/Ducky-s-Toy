@@ -2,6 +2,8 @@
 
 This Cloudflare Worker serves a small browser app and two API endpoints. It reads a job link, researches public sources with Firecrawl, and uses Cloudflare Workers AI to draft an email. Nidhi copies the result into her mail client and attaches her latest resume. The app never accesses Gmail or sends mail.
 
+**Live app:** https://nidhi-job-outreach.brsahoo8920.workers.dev/
+
 ## Set up on a free plan
 
 1. Create a Cloudflare account with Workers AI enabled and a Firecrawl account with available free credits. These are independent from the Firecrawl connector in Codex; the deployed app needs its own API key. Free allowances may change or be exhausted.

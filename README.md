@@ -4,6 +4,8 @@
 
 The runnable app is in [`web/`](web/). It takes a job link and the latest resume, researches public sources, compares the role with the resume, and writes a copy-ready email. It never opens Gmail or sends email. See [`web/README.md`](web/README.md) for free-tier deployment requirements and the manual setup steps.
 
+**Live app:** [nidhi-job-outreach.brsahoo8920.workers.dev](https://nidhi-job-outreach.brsahoo8920.workers.dev/). An access code is required to run research and drafting; the code is stored only as a Cloudflare Worker secret.
+
 This repository also includes the Codex-local workflow below. The web app and Codex workflow share the same evidence and writing rules, but the deployed web app needs its own Cloudflare Workers AI binding and Firecrawl API key.
 
 This repository contains a Codex-native workflow for turning a manually supplied job link and Nidhi's latest resume into a researched, copy-ready cold email. The writing rules are in [`nidhi_hiring_outreach_playbook.md`](nidhi_hiring_outreach_playbook.md); the operational workflow is in [`agent/WORKFLOW.md`](agent/WORKFLOW.md). `agent.py` records the resume version and validates the final proposal before producing `draft.md` for Nidhi to paste into her mail app.
