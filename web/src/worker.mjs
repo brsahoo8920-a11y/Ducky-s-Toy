@@ -1,5 +1,6 @@
 import { researchJob, validateDraft } from './workflow.mjs';
 import { dailyLearn, getLearningGuide, recordFeedback, saveDraft } from './learning.mjs';
+import { lookupApolloContacts } from './apollo.mjs';
 
 const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers });
@@ -18,7 +19,11 @@ export default {
       if (url.pathname === '/api/feedback') return json(await recordFeedback(env, input));
       if (url.pathname === '/api/compose') {
         const research = await researchJob(input, env);
-        const contacts = (research.analysis.contacts || []).filter(contact => contact.email).slice(0, 2);
+        const provider = await lookupApolloContacts(research, env);
+        const publicContacts = (research.analysis.contacts || []).filter(contact => contact.email);
+        const contacts = [...provider.contacts, ...publicContacts]
+          .filter((contact, index, all) => all.findIndex(other => other.email.toLowerCase() === contact.email.toLowerCase()) === index)
+          .slice(0, 2);
         const selected = contacts[0] || null;
         const guide = await getLearningGuide(env).catch(() => null);
         const draftInput = { ...input, research, learnedRules: guide?.rules || [], contact: selected ? { name: selected.name, role: selected.role, email: selected.email, source: selected.sourceUrl } : { name: '', role: '', email: '', source: '' } };
@@ -31,7 +36,7 @@ export default {
         if (!checked.ok) return json({ error: checked.error }, 502);
         const draftId = await saveDraft(env, draft).catch(() => null);
         return json({ contacts, draft, draftId, role: research.analysis.jobTitle, company: research.analysis.company,
-          warning: contacts.length < 2 ? 'Fewer than two work addresses could be verified. No address was guessed.' : '' });
+          warning: [contacts.length < 2 ? 'Fewer than two work addresses could be found. No address was guessed.' : 'These contacts are likely contacts; ownership of this vacancy is not confirmed.', provider.note].filter(Boolean).join(' ') });
       }
       if (url.pathname === '/api/research') return json(await researchJob(input, env));
       if (url.pathname === '/api/draft') {
