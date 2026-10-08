@@ -1,6 +1,6 @@
 # Nidhi job outreach web app
 
-This Cloudflare Worker serves a small browser app and two API endpoints. It reads a job link, researches public sources with Firecrawl, and uses Cloudflare Workers AI to draft an email. Nidhi copies the result into her mail client and attaches her latest resume. The app never accesses Gmail or sends mail.
+This Cloudflare Worker serves a small browser app. Its one-click flow reads a job link, researches public sources with Firecrawl, identifies up to two likely contacts with work emails literally present in the research, and uses Cloudflare Workers AI to draft an email. The page shows only the contacts and copy-ready email; sources remain internal for validation. Nidhi copies the result into her mail client and attaches her latest resume. The app never accesses Gmail or sends mail.
 
 **Live app:** https://nidhi-job-outreach.brsahoo8920.workers.dev/
 
@@ -13,7 +13,9 @@ This Cloudflare Worker serves a small browser app and two API endpoints. It read
 
 The access code prevents casual visitors from spending the free allowance. Keep the GitHub repo private; the deployed site is still reachable by URL, but API calls require the code. The resume is extracted locally in the browser, then its text is sent to Cloudflare Workers AI when Nidhi requests research or a draft. The text is not stored by this app. Firecrawl receives the public job URL, job description snippet and search terms, but never the resume. PDF extraction uses a pinned PDF.js build from cdnjs.
 
-Research results are evidence candidates, not a guarantee that the job is open or that a person owns the vacancy. The app accepts a work email only if it is visible in a cited research result. It does not guess email patterns. If the listing is inaccessible, paste the job description. Review every claim and source before sending.
+Research results are evidence candidates, not a guarantee that the job is open or that a person owns the vacancy. The app accepts a work email only if it is visible in a research result. It does not guess email patterns or promise 100% or 90% certainty. If fewer than two addresses can be substantiated, the remaining slot says so. If the listing is inaccessible, paste the job description. Review the contact and every claim before sending.
+
+Apollo, Lusha, and ZoomInfo connections inside Codex cannot be used automatically by this independent Cloudflare Worker. Direct provider searches require separate provider API credentials and account entitlements; none are configured in this deployment. The one-click flow currently uses Firecrawl public research. Do not describe an address as provider-verified unless a provider integration actually returned it.
 
 ## Local checks
 
