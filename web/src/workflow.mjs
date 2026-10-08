@@ -17,7 +17,7 @@ export function validJobUrl(value) {
 }
 
 function isPrivateHost(host) {
-  return host === 'localhost' || host.endsWith('.local') || host === '127.0.0.1' || host === '0.0.0.0' || host === '[::1]' || /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(host);
+  return host === 'localhost' || host.endsWith('.local') || /^\[.*\]$/.test(host) || /^\d+\.\d+\.\d+\.\d+$/.test(host);
 }
 
 async function firecrawl(path, body, key) {

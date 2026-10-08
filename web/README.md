@@ -9,7 +9,7 @@ This Cloudflare Worker serves a small browser app and two API endpoints. It read
 3. Add two Worker secrets: `APP_ACCESS_TOKEN` (a long random code shared only with Nidhi) and `FIRECRAWL_API_KEY`. Do not commit either secret.
 4. Deploy with `npx wrangler deploy` from `web/`. The `wrangler.toml` file binds Workers AI and serves `public/` as static assets. Cloudflare provides the resulting `*.workers.dev` URL.
 
-The access code prevents casual visitors from spending the free allowance. Keep the GitHub repo private; the deployed site is still reachable by URL, but API calls require the code. The resume is extracted locally in the browser, then its text is sent to Cloudflare Workers AI when Nidhi requests a draft. The text is not stored by this app. Firecrawl receives the public job URL, job description snippet and search terms, but never the resume.
+The access code prevents casual visitors from spending the free allowance. Keep the GitHub repo private; the deployed site is still reachable by URL, but API calls require the code. The resume is extracted locally in the browser, then its text is sent to Cloudflare Workers AI when Nidhi requests research or a draft. The text is not stored by this app. Firecrawl receives the public job URL, job description snippet and search terms, but never the resume. PDF extraction uses a pinned PDF.js build from cdnjs.
 
 Research results are evidence candidates, not a guarantee that the job is open or that a person owns the vacancy. The app accepts a work email only if it is visible in a cited research result. It does not guess email patterns. If the listing is inaccessible, paste the job description. Review every claim and source before sending.
 

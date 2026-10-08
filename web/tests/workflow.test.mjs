@@ -4,6 +4,7 @@ import { validateDraft, validJobUrl, researchJob } from '../src/workflow.mjs';
 
 test('rejects private URL targets', () => {
   assert.equal(validJobUrl('https://127.0.0.1/internal'), false);
+  assert.equal(validJobUrl('https://169.254.169.254/internal'), false);
   assert.equal(validJobUrl('https://localhost/'), false);
   assert.equal(validJobUrl('https://www.linkedin.com/jobs/view/123'), true);
 });
