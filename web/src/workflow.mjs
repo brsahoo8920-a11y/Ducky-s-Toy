@@ -86,7 +86,17 @@ export async function researchJob(input, env) {
     companyFacts: (Array.isArray(analysis.companyFacts) ? analysis.companyFacts : []).filter(x => urls.has(x.sourceUrl)).slice(0, 3),
     fit: (Array.isArray(analysis.fit) ? analysis.fit : []).filter(x => typeof x.resumeQuote === 'string' && input.resumeText.includes(x.resumeQuote)).slice(0, 5),
     gaps: (Array.isArray(analysis.gaps) ? analysis.gaps : []).map(String).slice(0, 5),
-    contacts: (Array.isArray(analysis.contacts) ? analysis.contacts : []).filter(x => typeof x.name === 'string' && x.name.trim() && urls.has(x.sourceUrl)).slice(0, 3).map(x => ({ ...x, email: unique.find(s => s.url === x.sourceUrl)?.excerpt.toLowerCase().includes(String(x.email || '').toLowerCase()) && x.email ? x.email : '' }))
+    contacts: (Array.isArray(analysis.contacts) ? analysis.contacts : [])
+      .filter(x => typeof x.name === 'string' && x.name.trim() && urls.has(x.sourceUrl))
+      .slice(0, 3)
+      .map(x => {
+        const email = String(x.email || '').trim().toLowerCase();
+        const excerpt = unique.find(s => s.url === x.sourceUrl)?.excerpt || '';
+        const verified = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email) &&
+          new RegExp(`(^|[^a-z0-9.!#$%&'*+/=?^_` + '`' + `{|}~-])${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9.-])`, 'i').test(excerpt);
+        return { name: x.name.trim(), role: String(x.role || '').trim(), reason: String(x.reason || '').trim(), sourceUrl: x.sourceUrl,
+          confidence: ['high', 'medium', 'low'].includes(x.confidence) ? x.confidence : 'low', email: verified ? email : '' };
+      })
   };
   return output;
 }
