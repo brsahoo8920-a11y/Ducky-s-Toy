@@ -1,5 +1,4 @@
 const $ = id => document.getElementById(id);
-let research = null;
 let resumeFilename = 'the latest resume';
 const setStatus = message => { $('status-message').textContent = message; };
 const getInput = () => ({
@@ -45,63 +44,30 @@ $('agent-form').addEventListener('submit', async event => {
   const input = getInput();
   if (input.resumeText.length < 200) return setStatus('Please upload or paste a readable resume.');
   const button = $('research-button');
-  button.disabled = true; button.textContent = 'Researching…'; setStatus('Looking for the role, official sources and recruiting contacts…');
+  button.disabled = true;
+  button.textContent = 'Finding contacts and writing…';
+  $('draft-result').hidden = true;
+  setStatus('Checking the role, hiring contacts, work addresses and resume match…');
   try {
-    research = await callApi('/api/research', input);
+    const result = await callApi('/api/compose', input);
+    const [primary, secondary] = result.contacts;
     $('empty-state').hidden = true;
-    $('research-result').hidden = false;
-    $('draft-result').hidden = true;
-    $('warning').textContent = research.warning + ' ' + research.contactNote;
-    const analysis = research.analysis || {};
-    $('analysis-summary').textContent = `${analysis.jobTitle || 'Role title uncertain'} · ${analysis.company || 'Company uncertain'} · Status: ${analysis.jobStatus || 'unknown'}`;
-    $('fit-list').replaceChildren(...(analysis.fit || []).map(item => listItem(`${item.requirement}: ${item.resumeQuote}`, item.assessment)));
-    $('company-list').replaceChildren(...(analysis.companyFacts || []).map(item => listItem(item.fact, item.sourceUrl)));
-    $('contact-list').replaceChildren(...(analysis.contacts || []).map(item => listItem(`${item.name} · ${item.role} · ${item.confidence} confidence`, item.reason)));
-    const firstContact = (analysis.contacts || [])[0];
-    $('contact-name').value = firstContact?.name || '';
-    $('contact-role').value = firstContact?.role || '';
-    $('contact-email').value = firstContact?.email || '';
-    $('contact-source').value = firstContact?.email ? firstContact.sourceUrl : '';
-    $('gaps').hidden = !(analysis.gaps || []).length;
-    $('gaps').textContent = (analysis.gaps || []).join(' · ');
-    $('sources').replaceChildren(...research.sources.map(source => {
-      const li = document.createElement('li');
-      const a = document.createElement('a'); a.href = source.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = source.title || source.url;
-      const small = document.createElement('small'); small.textContent = source.excerpt.slice(0, 230);
-      li.append(a, small); return li;
-    }));
-    setStatus(`Found ${research.sources.length} sources. Review them before drafting.`);
-  } catch (error) { setStatus(error.message); }
-  finally { button.disabled = false; button.innerHTML = 'Research this role <span aria-hidden="true">→</span>'; }
-});
-
-function listItem(title, detail) {
-  const li = document.createElement('li');
-  const strong = document.createElement('strong'); strong.textContent = title || '';
-  const small = document.createElement('small'); small.textContent = detail || '';
-  li.append(strong, small); return li;
-}
-
-$('draft-button').addEventListener('click', async () => {
-  const email = $('contact-email').value.trim();
-  const source = $('contact-source').value.trim();
-  if (email && (!source || !/^https:\/\//.test(source))) return setStatus('A verified work email needs an HTTPS evidence URL. Leave the email blank if unverified.');
-  const button = $('draft-button'); button.disabled = true; button.textContent = 'Writing…'; setStatus('Comparing the role with the resume and writing the email…');
-  try {
-    const payload = { ...getInput(), research, contact: { name: $('contact-name').value.trim(), role: $('contact-role').value.trim(), email, source } };
-    const data = await callApi('/api/draft', payload);
     $('draft-result').hidden = false;
-    $('draft-to').textContent = email || 'Recipient unresolved — verify before sending';
-    $('draft-subject').textContent = data.draft.subject;
-    $('draft-body').textContent = data.draft.body;
-    $('attachment-reminder').textContent = `Before sending: attach ${resumeFilename} manually and verify every claim.`;
-    $('used-sources').replaceChildren(...data.draft.usedSourceUrls.map(url => { const li = document.createElement('li'); const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = url; li.append(a); return li; }));
-    setStatus('Draft ready for review and copy. No email has been sent.');
+    $('role-summary').textContent = [result.role, result.company].filter(Boolean).join(' · ');
+    $('primary-contact').textContent = primary ? `${primary.name} · ${primary.role} · ${primary.email}` : 'No verified work email found';
+    $('secondary-contact').textContent = secondary ? `${secondary.name} · ${secondary.role} · ${secondary.email}` : 'No second verified work email found';
+    $('contact-warning').textContent = result.warning || 'These are likely contacts, not a guarantee that either owns this vacancy.';
+    $('draft-subject').textContent = result.draft.subject;
+    $('draft-body').textContent = result.draft.body;
+    $('attachment-reminder').textContent = `Before sending: attach ${resumeFilename} manually and verify the contact and claims.`;
+    $('copy-button').dataset.email = primary?.email || '';
+    setStatus('Email ready to copy. No email has been sent.');
   } catch (error) { setStatus(error.message); }
-  finally { button.disabled = false; button.innerHTML = 'Create the email draft <span aria-hidden="true">→</span>'; }
+  finally { button.disabled = false; button.innerHTML = 'Find contacts and write email <span aria-hidden="true">→</span>'; }
 });
 
 $('copy-button').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(`Subject: ${$('draft-subject').textContent}\n\n${$('draft-body').textContent}`);
-  setStatus('Subject and message copied. Remember to attach the resume manually.');
+  const address = $('copy-button').dataset.email;
+  await navigator.clipboard.writeText(`${address ? `To: ${address}\n` : ''}Subject: ${$('draft-subject').textContent}\n\n${$('draft-body').textContent}`);
+  setStatus('Email copied. Remember to attach the resume manually.');
 });
