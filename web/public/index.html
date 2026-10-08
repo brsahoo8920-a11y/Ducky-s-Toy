@@ -17,7 +17,7 @@
     <section class="hero">
       <div class="eyebrow">A clearer first message</div>
       <h1>Turn a job link into a <em>thoughtful introduction.</em></h1>
-      <p>Research the role and company, compare it with the latest resume, then prepare an email Nidhi can copy and send herself.</p>
+      <p>Add the job and latest resume. Get the best available hiring contacts and a ready-to-copy email.</p>
     </section>
 
     <section class="workspace">
@@ -36,39 +36,21 @@
         <textarea id="jd" rows="5" placeholder="Paste the job description if you have it."></textarea>
         <label for="status">Application status</label>
         <select id="status"><option value="unknown">Not sure / not stated</option><option value="not_applied">I have not applied yet</option><option value="applied">I already applied</option></select>
-        <button type="submit" class="primary" id="research-button">Research this role <span aria-hidden="true">→</span></button>
+        <button type="submit" class="primary" id="research-button">Find contacts and write email <span aria-hidden="true">→</span></button>
       </form>
 
       <div class="result-panel">
-        <div class="panel-heading"><span class="step">02</span><div><h2>Review the evidence</h2><p>Choose the contact only when the source supports it.</p></div></div>
-        <div id="empty-state" class="empty-state"><div class="orb">✦</div><h3>Your research will appear here.</h3><p>Add a job link and resume to begin.</p></div>
-        <div id="research-result" hidden>
-          <div id="warning" class="notice"></div>
-          <div id="analysis-summary" class="analysis-summary"></div>
-          <h3>Resume fit</h3><ul id="fit-list" class="evidence-list"></ul>
-          <h3>Company context</h3><ul id="company-list" class="evidence-list"></ul>
-          <h3>Likely contacts</h3><ul id="contact-list" class="evidence-list"></ul>
-          <div id="gaps" class="notice" hidden></div>
-          <h3>Sources to review</h3>
-          <ul id="sources" class="source-list"></ul>
-          <div class="contact-box">
-            <h3>Hiring contact</h3>
-            <p>Enter an address only if the exact work email appears in one of the sources above. Leave it blank if uncertain.</p>
-            <label for="contact-name">Name</label><input id="contact-name" placeholder="Verified or likely contact name">
-            <label for="contact-role">Role</label><input id="contact-role" placeholder="Recruiting manager / recruiter">
-            <label for="contact-email">Verified work email <span class="hint">optional</span></label><input id="contact-email" type="email" placeholder="name@company.com">
-            <label for="contact-source">Source URL from the list above <span class="hint">required for an email address</span></label><input id="contact-source" type="url" placeholder="https://company.com/team/...">
-          </div>
-          <button id="draft-button" class="primary" type="button">Create the email draft <span aria-hidden="true">→</span></button>
-        </div>
+        <div class="panel-heading"><span class="step">02</span><div><h2>Contacts and email</h2><p>Copy the email into Nidhi’s mail app and attach her resume.</p></div></div>
+        <div id="empty-state" class="empty-state"><div class="orb">✦</div><h3>Your email will appear here.</h3><p>Add a job link and resume to begin.</p></div>
         <div id="draft-result" hidden>
-          <div class="divider"></div><div class="panel-heading"><span class="step">03</span><div><h2>Your draft</h2><p>Copy it into Nidhi’s email account and attach the current resume.</p></div></div>
-          <div class="draft-field"><span>TO</span><strong id="draft-to"></strong></div>
+          <div id="role-summary" class="analysis-summary"></div>
+          <div class="draft-field"><span>PRIMARY HIRING CONTACT</span><strong id="primary-contact"></strong></div>
+          <div class="draft-field"><span>SECOND POSSIBILITY</span><strong id="secondary-contact"></strong></div>
+          <p id="contact-warning" class="field-note"></p>
           <div class="draft-field"><span>SUBJECT</span><strong id="draft-subject"></strong></div>
           <pre id="draft-body"></pre>
-          <button id="copy-button" class="secondary" type="button">Copy subject and message</button>
+          <button id="copy-button" class="secondary" type="button">Copy address, subject and message</button>
           <p id="attachment-reminder" class="attachment"></p>
-          <details><summary>Evidence used</summary><ul id="used-sources"></ul></details>
         </div>
       </div>
     </section>
