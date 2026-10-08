@@ -2,6 +2,9 @@ name = "nidhi-job-outreach"
 main = "src/worker.mjs"
 compatibility_date = "2026-10-01"
 
+[vars]
+PROVIDER_LOOKUP_ENABLED = "true"
+
 [ai]
 binding = "AI"
 
